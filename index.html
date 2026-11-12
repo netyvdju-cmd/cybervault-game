@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CyberVault PvP</title>
+<script src="https://telegram.org"></script>
+<script src="https://jsdelivr.net"></script>
+<style>
+:root { --bg: #0b0e14; --card: #151a24; --neon: #00ffcc; --pink: #ff007f; --dim: #8b9bb4; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: #fff; min-height: 100vh; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.box { background: var(--card); border: 1px solid rgba(0,255,204,0.2); border-radius: 12px; padding: 12px; text-align: center; }
+.lbl { font-size: 11px; color: var(--dim); text-transform: uppercase; margin-bottom: 4px; }
+.val { font-size: 20px; font-weight: 800; color: var(--neon); }
+.vault { background: radial-gradient(circle, #1a2234 0%, var(--card) 100%); border: 2px solid var(--neon); border-radius: 20px; padding: 20px 14px; text-align: center; }
+.ava { font-size: 54px; margin-bottom: 6px; }
+.title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.desc { font-size: 13px; color: var(--dim); margin-bottom: 14px; }
+.pins { display: flex; justify-content: center; gap: 10px; margin-bottom: 16px; }
+.digit { width: 44px; height: 50px; background: rgba(0,0,0,0.5); border: 1px solid var(--neon); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--neon); }
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 250px; margin: 0 auto 14px; }
+.kbtn { background: #1f2738; color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; font-size: 18px; font-weight: 600; cursor: pointer; }
+.btn { width: 100%; background: linear-gradient(90deg, var(--neon), #00b386); color: #000; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+.pink { background: linear-gradient(90deg, var(--pink), #cc0066); color: #fff; }
+.ref { background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid rgba(255,255,255,0.08); margin-top: auto; }
+.rhead { font-size: 13px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.rdesc { font-size: 12px; color: var(--dim); margin-bottom: 10px; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div class="stats">
+  <div class="box"><div class="lbl">Баланс монет</div><div class="val" id="coinsVal">1000</div></div>
+  <div class="box"><div class="lbl">Ключи взлома</div><div class="val" style="color:var(--pink)" id="keysVal">5 🔑</div></div>
+</div>
+
+<div class="vault">
+  <div class="ava">🐸</div>
+  <div class="title">Кибер-Сейф Босса</div>
+  <div class="desc">Подбери 3-значный код и забери банк 500 монет!</div>
+  <div class="pins">
+    <div class="digit" id="d1">-</div>
+    <div class="digit" id="d2">-</div>
+    <div class="digit" id="d3">-</div>
+  </div>
+  <div class="pad">
+    <button class="kbtn" onclick="press('1')">1</button>
+    <button class="kbtn" onclick="press('2')">2</button>
+    <button class="kbtn" onclick="press('3')">3</button>
+    <button class="kbtn" onclick="press('4')">4</button>
+    <button class="kbtn" onclick="press('5')">5</button>
+    <button class="kbtn" onclick="press('6')">6</button>
+    <button class="kbtn" onclick="press('7')">7</button>
+    <button class="kbtn" onclick="press('8')">8</button>
+    <button class="kbtn" onclick="press('9')">9</button>
+    <button class="kbtn" onclick="clr()">C</button>
+    <button class="kbtn" onclick="press('0')">0</button>
+    <button class="kbtn" onclick="hack()">🔓</button>
+  </div>
+  <button class="btn" onclick="watchAd()">Смотреть ролик (+3 Ключа)</button>
+  <button class="btn pink" onclick="buyVip()">Купить VIP-набор за TON</button>
+</div>
+
+<div class="ref">
+  <div class="rhead"><span>🚀 Реферальная сеть</span><span id="refsCount">Друзей: 0</span></div>
+  <div class="rdesc">Получай <b>5 ключей</b> за каждого друга + <b>15%</b> от его монет навсегда!</div>
+  <button class="btn" onclick="invite()">Вызвать друга на PvP дуэль</button>
+</div>
+
+<script>
+const SB_URL = "https://supabase.co";
+const SB_KEY = "sb_publishable_pYG2Qx_H-bxnyMeAgR4khw_F6vSmNHL";
+const BOT_NAME = "CyberVaultPvP_bot";
+const TON_WALLET = "UQDDYOFc0bym6-A381VwT4WOTNCx0V6kWAi9i6cl17Y0IvlF";
+
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.expand(); tg.enableClosingConfirmation(); }
+const db = window.supabase?.createClient(SB_URL, SB_KEY);
+const user = tg?.initDataUnsafe?.user || { id: 12345678, first_name: "Hacker", username: "player" };
+let stats = { coins: 1000, keys: 5, refs: 0 };
+let pin = "";
+
+async function init() {
+  if (!db) return;
+  try {
+    const { data } = await db.from('players').select('*').eq('id', user.id).single();
+    if (!data) {
+      const { data: nu } = await db.from('players').insert([{ id: user.id, username: user.username || user.first_name }]).select().single();
+      if (nu) stats = { coins: nu.coins, keys: nu.keys, refs: nu.total_refs };
+    } else {
+      stats = { coins: data.coins, keys: data.keys, refs: data.total_refs };
+    }
+    ui();
+  } catch (e) {}
+}
+
+function ui() {
+  document.getElementById('coinsVal').innerText = stats.coins;
+  document.getElementById('keysVal').innerText = stats.keys + " 🔑";
+  document.getElementById('refsCount').innerText = "Друзей: " + stats.refs;
+}
+
+function press(n) { if (pin.length < 3) { pin += n; render(); } }
+function clr() { pin = ""; render(); }
+function render() {
+  document.getElementById('d1').innerText = pin || "-";
+  document.getElementById('d2').innerText = pin || "-";
+  document.getElementById('d3').innerText = pin || "-";
+}
+
+async function hack() {
+  if (pin.length < 3) return alert("Введи 3 цифры!");
+  if (stats.keys <= 0) return alert("Ключи кончились! Позови друга или посмотри рекламу.");
+  stats.keys -= 1;
+  const code = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+  if (pin === code || Math.random() < 0.25) {
+    stats.coins += 500;
+    alert("ВЗЛОМ УСПЕШЕН! +500 монет!");
+  } else {
+    alert("ОШИБКА ДОСТУПА! Попробуй другой код.");
+  }
+  clr(); ui();
+  if (db) await db.from('players').update({ coins: stats.coins, keys: stats.keys }).eq('id', user.id);
+}
+
+function invite() {
+  const link = "https://t.me" + BOT_NAME + "?start=" + user.id;
+  const text = "Я взломал Кибер-Сейф! Попробуй обойти защиту и забрать банк:";
+  const url = "https://t.meshare/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent(text);
+  tg ? tg.openTelegramLink(url) : window.open(url, '_blank');
+}
+
+function watchAd() {
+  alert("Реклама просмотрена! Начислено +3 Ключа.");
+  stats.keys += 3; ui();
+  if (db) db.from('players').update({ keys: stats.keys }).eq('id', user.id);
+}
+
+function buyVip() {
+  window.location.href = "ton://transfer/" + TON_WALLET + "?amount=200000000&text=VIP_" + user.id;
+}
+
+init();
+</script>
+</body>
+                                                                                                                   </html>
+                                                                                                                   
